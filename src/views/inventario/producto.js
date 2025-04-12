@@ -51,7 +51,7 @@ export default function ProductoPage() {
   const [searchFilter, setSearchFilter] = useState({ form_negocio_id: id });
   const [filteredRows, setFilteredRows] = useState({});
   const [totalItems, setTotalItems] = useState(0);
-  const [itemSave, setItemSave] = useState({ negocio_id: id });
+  const [itemSave, setItemSave] = useState({ negocio_id: id, moneda: 'PEN' });
   const [openModal1, setOpenModal1] = useState(false);
   const [openModal2, setOpenModal2] = useState(false);
   const [editedItem, setEditedItem] = useState(0);
@@ -233,7 +233,6 @@ export default function ProductoPage() {
       moneda: row.moneda,
       price: row.price,
       observacion: row.observacion,
-      num_part: row.num_part,
       negocio_id: row.negocio_id
     });
   }
@@ -504,7 +503,7 @@ export default function ProductoPage() {
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
-                      <label htmlFor="negocio_id">Empresa:</label>
+                      <label htmlFor="negocio_id">Empresa:(*)</label>
                       <Autocomplete
                         size="small"
                         options={negocios}
@@ -579,19 +578,6 @@ export default function ProductoPage() {
                       />
                     </div>
                   </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label htmlFor="num_part">Nro.Parte:</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="num_part"
-                        id="num_part"
-                        onChange={handleSaveChange}
-                        value={itemSave.num_part || ''}
-                      />
-                    </div>
-                  </div>
                 </div>
               </form>
             </div>
@@ -639,7 +625,7 @@ export default function ProductoPage() {
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
-                      <label htmlFor="barcode">Código de Barras:(*)</label>
+                      <label htmlFor="barcode">Código de Barras:</label>
                       <input
                         type="text"
                         className="form-control"
@@ -671,7 +657,7 @@ export default function ProductoPage() {
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
-                      <label htmlFor="description">Descripcióm:(*)</label>
+                      <label htmlFor="description">Descripción:</label>
                       <input
                         type="text"
                         className="form-control"
@@ -687,7 +673,7 @@ export default function ProductoPage() {
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
-                      <label htmlFor="negocio_id">Empresa:</label>
+                      <label htmlFor="negocio_id">Empresa(*):</label>
                       <Autocomplete
                         size="small"
                         options={negocios}
@@ -762,22 +748,6 @@ export default function ProductoPage() {
                             [name]: files ? files[0] : event.target.value
                           }));
                         }}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label htmlFor="num_part">Nro.Parte:</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="num_part"
-                        id="num_part"
-                        onChange={(event) => {
-                          const { name, value } = event.target;
-                          handleEditChange(name, value);
-                        }}
-                        value={editedItem.num_part || ''}
                       />
                     </div>
                   </div>

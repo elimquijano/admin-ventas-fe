@@ -77,7 +77,7 @@ export default function ExistenciaPage() {
     fetch(API_URL_USER + 'data')
       .then((response) => response.json())
       .then((data) => {
-        const filter = data.filter((prod) => prod.negocio_id == id && String(prod?.name).includes('Barra'));
+        const filter = data.filter((prod) => prod.negocio_id == id);
         setUsuarios(filter);
       })
       .catch((error) => console.error('Error:', error));

@@ -10,7 +10,9 @@ import facturacion from './facturacion';
 const menuItems = {
   items: []
 };
+
 const privilegios = JSON.parse(getSession('PRIVILEGIOS'));
+
 if (privilegios) {
   const tieneSeguridad = privilegios.some((item) => item.code === 'PRIV_MOD_SEGURIDAD');
   const tieneInventario = privilegios.some((item) => item.code === 'PRIV_MOD_INVENTARIO');
@@ -19,7 +21,7 @@ if (privilegios) {
   const tieneBarras = privilegios.some((item) => item.code === 'PRIV_MOD_BARRAS');
   const tieneTickets = privilegios.some((item) => item.code === 'PRIV_MOD_TICKETS');
   const tieneHabitacion = privilegios.some((item) => item.code === 'PRIV_MOD_HABITACIONES');
-
+  
   if (tieneInventario) {
     menuItems.items.push(inventario);
   }

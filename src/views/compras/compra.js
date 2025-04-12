@@ -321,7 +321,7 @@ export default function CompraPage() {
                     </TableCell>
                   ))}
                   {/* Columna adicional para botones de acción */}
-                  <TableCell>DETALLES</TableCell>
+                  <TableCell>PRODUCTOS</TableCell>
                   <TableCell>ACCIONES</TableCell>
                 </TableRow>
               </TableHead>

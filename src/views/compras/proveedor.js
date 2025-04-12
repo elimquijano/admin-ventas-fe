@@ -39,8 +39,8 @@ export default function ProveedorPage() {
   const [searchFilter, setSearchFilter] = useState({ form_negocio_id: id });
   const [filteredRows, setFilteredRows] = useState({});
   const [totalItems, setTotalItems] = useState(0);
-  const [itemSave, setItemSave] = useState(0);
-  const [editedItem, setEditedItem] = useState(0);
+  const [itemSave, setItemSave] = useState({ negocio_id: id, email: 'example@gmail.com' });
+  const [editedItem, setEditedItem] = useState({});
   const [openModal1, setOpenModal1] = useState(false);
   const [openModal2, setOpenModal2] = useState(false);
   const [negocios, setNegocios] = useState([]);
@@ -124,10 +124,6 @@ export default function ProveedorPage() {
       }
       if (!itemSave.name) {
         msgResponse += '* Debe ingresar el nombre.<br>';
-        response = false;
-      }
-      if (!itemSave.email) {
-        msgResponse += '* Debe añadir un email.<br>';
         response = false;
       }
     }
@@ -262,17 +258,6 @@ export default function ProveedorPage() {
                 />
               </div>
               <div className="col-sm-4">
-                <label htmlFor="form_email">Email:</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="form_email"
-                  id="form_email"
-                  onChange={handleSearchChange}
-                  value={searchFilter.form_email || ''}
-                />
-              </div>
-              <div className="col-sm-4">
                 <label htmlFor="form_negocio_id">Empresa:</label>
                 <Autocomplete
                   size="small"
@@ -283,6 +268,17 @@ export default function ProveedorPage() {
                   }}
                   renderInput={(params) => <TextField {...params} />}
                   value={negocios?.find((n) => n.id === searchFilter.form_negocio_id) || null}
+                />
+              </div>
+              <div className="col-sm-4">
+                <label htmlFor="form_email">Email:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="form_email"
+                  id="form_email"
+                  onChange={handleSearchChange}
+                  value={searchFilter.form_email || ''}
                 />
               </div>
             </form>
@@ -398,19 +394,6 @@ export default function ProveedorPage() {
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
-                      <label htmlFor="email">Email:(*)</label>
-                      <input
-                        type="email"
-                        className="form-control"
-                        name="email"
-                        id="email"
-                        onChange={handleSaveChange}
-                        value={itemSave.email || ''}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
                       <label htmlFor="negocio_id">Empresa:</label>
                       <Autocomplete
                         size="small"
@@ -421,6 +404,19 @@ export default function ProveedorPage() {
                         }}
                         renderInput={(params) => <TextField {...params} />}
                         value={negocios?.find((n) => n.id === itemSave.negocio_id) || null}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label htmlFor="email">Email:(*)</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        id="email"
+                        onChange={handleSaveChange}
+                        value={itemSave.email || ''}
                       />
                     </div>
                   </div>

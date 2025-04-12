@@ -261,7 +261,7 @@ export default function DetVentasProductsPage() {
           <KeyboardArrowLeftIcon /> Retornar
         </Link>{' '}
         <Button onClick={handleOpenModal1} className="btn btn-info m-3">
-          Registrar Detalle de venta
+          Agregar Productos a la compra {id}
         </Button>
         <Button onClick={SaveItem} className="btn btn-primary m-3">
           {totalItems === 0 ? 'Guardar cambios' : 'Actualizar cambios'}

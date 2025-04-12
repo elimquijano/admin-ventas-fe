@@ -4,8 +4,8 @@
 
 const barras = {
   id: 'barras',
-  title: 'Barras',
-  caption: 'Paginas de Barras',
+  title: 'POS',
+  caption: 'Venta de Productos',
   type: 'group',
   children: [
     {

@@ -54,7 +54,8 @@ export default function DetCompraPage() {
   const [openModal2, setOpenModal2] = useState(false);
   const [editedItem, setEditedItem] = useState(0);
   const [itemSave, setItemSave] = useState({
-    compra_id: id
+    compra_id: id,
+    moneda: 'PEN'
   });
 
   useEffect(() => {
@@ -257,7 +258,7 @@ export default function DetCompraPage() {
     });
     setTotalItems((prevTotalItems) => prevTotalItems + 1);
     notificationSwal('success', 'Añadido a la lista');
-    setItemSave({compra_id: id});
+    setItemSave({ compra_id: id });
   };
 
   return (
@@ -268,7 +269,7 @@ export default function DetCompraPage() {
             <KeyboardArrowLeftIcon /> Retornar
           </Link>{' '}
           <Button onClick={handleOpenModal1} className="btn btn-info m-3">
-            Registrar Detalle de compra
+            Agregar Producto a la Compra {id}
           </Button>
           <Button onClick={SaveItem} className="btn btn-primary m-3">
             {totalItems === 0 ? 'Guardar cambios' : 'Actualizar cambios'}
@@ -362,13 +363,11 @@ export default function DetCompraPage() {
                       <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
                         {columns.map((column) => (
                           <TableCell key={column.id} align={column.align}>
-                            {column.id === 'name_producto' ? (
-                              productos.find((prov) => prov.id === row.producto_id)?.name
-                            ) : column.id === 'price' ? (
-                              `${row.moneda} ${row.price}`
-                            ) : (
-                              row[column.id]
-                            )}
+                            {column.id === 'name_producto'
+                              ? productos.find((prov) => prov.id === row.producto_id)?.name
+                              : column.id === 'price'
+                              ? `${row.moneda} ${row.price}`
+                              : row[column.id]}
                           </TableCell>
                         ))}
                         {/* Columna de botones de acción */}
@@ -440,14 +439,20 @@ export default function DetCompraPage() {
                     </div>
                     <div className="col-md-6">
                       <div className="form-group">
-                        <label htmlFor="price">Precio:</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          name="price"
-                          id="price"
-                          onChange={handleSaveChange}
-                          value={itemSave.price || ''}
+                        <label htmlFor="producto_id">Producto:</label>
+                        <Autocomplete
+                          size="small"
+                          options={productos}
+                          getOptionLabel={(option) => option.name}
+                          onChange={(event, newValue) => {
+                            setItemSave({
+                              ...itemSave,
+                              producto_id: newValue ? newValue.id : '',
+                              price: newValue ? newValue.price : ''
+                            });
+                          }}
+                          value={productos.find((prov) => prov.id === itemSave.producto_id) || null}
+                          renderInput={(params) => <TextField {...params} />}
                         />
                       </div>
                     </div>
@@ -462,24 +467,6 @@ export default function DetCompraPage() {
                             setItemSave({ ...itemSave, moneda: newValue ? newValue.id : '' });
                           }}
                           value={monedas.find((cat) => cat.id === itemSave.moneda) || null}
-                          renderInput={(params) => <TextField {...params} />}
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-group">
-                        <label htmlFor="producto_id">Producto:</label>
-                        <Autocomplete
-                          size="small"
-                          options={productos}
-                          getOptionLabel={(option) => option.name}
-                          onChange={(event, newValue) => {
-                            setItemSave({
-                              ...itemSave,
-                              producto_id: newValue ? newValue.id : ''
-                            });
-                          }}
-                          value={productos.find((prov) => prov.id === itemSave.producto_id) || null}
                           renderInput={(params) => <TextField {...params} />}
                         />
                       </div>

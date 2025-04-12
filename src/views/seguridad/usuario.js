@@ -299,11 +299,11 @@ export default function UsuarioPage() {
                       {columns.map((column) => (
                         <TableCell key={column.id} align={column.align}>
                           {column.id === 'negocio_id'
-                            ? negocios.find((cat) => cat.id === row.negocio_id)?.name || (
+                            ? negocios.find((cat) => cat.id == row?.negocio_id)?.name || (
                                 <span className="badge badge-danger">No tiene</span>
                               )
                             : column.id === 'documento_id'
-                            ? documentos.find((cat) => cat.id === row.documento_id)?.serie || (
+                            ? documentos.find((cat) => cat.id == row?.documento_id)?.serie || (
                                 <span className="badge badge-danger">No tiene</span>
                               )
                             : row[column.id]}

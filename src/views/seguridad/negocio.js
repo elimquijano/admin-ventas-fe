@@ -34,7 +34,7 @@ export default function NegocioPage() {
   const [sedes, setSedes] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchFilter, setSearchFilter] = useState({form_id: id});
+  const [searchFilter, setSearchFilter] = useState({ form_id: id });
   const [filteredRows, setFilteredRows] = useState({});
   const [totalItems, setTotalItems] = useState(0);
   const [itemSave, setItemSave] = useState(0);
@@ -65,9 +65,10 @@ export default function NegocioPage() {
       notificationSwal('error', error);
     }
   }
+
   function CleanFilter() {
     setFilteredRows({});
-    setSearchFilter({form_id: id});
+    setSearchFilter({ form_id: id });
     setPage(0);
     setRowsPerPage(10);
     setTotalItems(0);
@@ -242,6 +243,7 @@ export default function NegocioPage() {
                   }}
                   renderInput={(params) => <TextField {...params} />}
                   size="small"
+                  value={searchFilter.form_sede || ''}
                 />
               </div>
             </form>
@@ -410,7 +412,7 @@ export default function NegocioPage() {
                     />
                   </div>
                   <div className="col-md-6 form-group">
-                    <label htmlFor="numeros_sms">Números a enviar SMS:</label>
+                    <label htmlFor="numeros_sms">Teléfono(s):</label>
                     <input
                       type="text"
                       className="form-control"
@@ -419,64 +421,6 @@ export default function NegocioPage() {
                       placeholder="9xxxxxxx,9xxxxxxx,..."
                       onChange={handleSaveChange}
                       value={itemSave.numeros_sms || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="token_reporte">Token para reporte PDF:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="token_reporte"
-                      id="token_reporte"
-                      onChange={handleSaveChange}
-                      value={itemSave.token_reporte || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="url_facturacion">URL para facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="url_facturacion"
-                      id="url_facturacion"
-                      placeholder="http://..."
-                      onChange={handleSaveChange}
-                      value={itemSave.url_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="token_facturacion">Token para facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="token_facturacion"
-                      id="token_facturacion"
-                      onChange={handleSaveChange}
-                      value={itemSave.token_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="porcent_envio_ventas_facturacion">Porcentaje de envio del total de ventas a facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="porcent_envio_ventas_facturacion"
-                      id="porcent_envio_ventas_facturacion"
-                      placeholder="0.6"
-                      onChange={handleSaveChange}
-                      value={itemSave.porcent_envio_ventas_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="porcent_envio_ticket_facturacion">Porcentaje de envio del total de tickets a facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="porcent_envio_ticket_facturacion"
-                      id="porcent_envio_ticket_facturacion"
-                      placeholder="0.8"
-                      onChange={handleSaveChange}
-                      value={itemSave.porcent_envio_ticket_facturacion || ''}
                     />
                   </div>
                   <div className="col-md-12 form-group">
@@ -584,7 +528,7 @@ export default function NegocioPage() {
                     </Select>
                   </div>
                   <div className="col-md-6 form-group">
-                    <label htmlFor="numeros_sms">Números a enviar SMS:</label>
+                    <label htmlFor="numeros_sms">Teléfono(s):</label>
                     <input
                       type="text"
                       className="form-control"
@@ -596,79 +540,6 @@ export default function NegocioPage() {
                         handleEditChange(name, value);
                       }}
                       value={editedItem.numeros_sms || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="token_reporte">Token para reporte PDF:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="token_reporte"
-                      id="token_reporte"
-                      onChange={(event) => {
-                        const { name, value } = event.target;
-                        handleEditChange(name, value);
-                      }}
-                      value={editedItem.token_reporte || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="url_facturacion">URL para facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="url_facturacion"
-                      id="url_facturacion"
-                      placeholder="http://..."
-                      onChange={(event) => {
-                        const { name, value } = event.target;
-                        handleEditChange(name, value);
-                      }}
-                      value={editedItem.url_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="token_facturacion">Token para facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="token_facturacion"
-                      id="token_facturacion"
-                      onChange={(event) => {
-                        const { name, value } = event.target;
-                        handleEditChange(name, value);
-                      }}
-                      value={editedItem.token_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="porcent_envio_ventas_facturacion">Porcentaje de envio del total de ventas a facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="porcent_envio_ventas_facturacion"
-                      id="porcent_envio_ventas_facturacion"
-                      placeholder="0.6"
-                      onChange={(event) => {
-                        const { name, value } = event.target;
-                        handleEditChange(name, value);
-                      }}
-                      value={editedItem.porcent_envio_ventas_facturacion || ''}
-                    />
-                  </div>
-                  <div className="col-md-6 form-group">
-                    <label htmlFor="porcent_envio_ticket_facturacion">Porcentaje de envio del total de tickets a facturación:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="porcent_envio_ticket_facturacion"
-                      id="porcent_envio_ticket_facturacion"
-                      placeholder="0.8"
-                      onChange={(event) => {
-                        const { name, value } = event.target;
-                        handleEditChange(name, value);
-                      }}
-                      value={editedItem.porcent_envio_ticket_facturacion || ''}
                     />
                   </div>
                   <div className="col-md-12 form-group">

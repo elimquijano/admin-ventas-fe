@@ -1,8 +1,6 @@
-import { AddCircle, Close, FilterList, FilterListOff, RemoveCircle, Send } from '@mui/icons-material';
+import { AddCircle, Close, FilterList, FilterListOff, RemoveCircle, Send, ShoppingCart } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import {
-  Alert,
-  AlertTitle,
   Box,
   Button,
   Divider,
@@ -14,78 +12,85 @@ import {
   TableCell,
   TableContainer,
   TableRow,
-  Typography
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  Badge,
+  Alert
 } from '@mui/material';
-import { notificationSwal } from 'common/common';
-import React from 'react';
-import { useState } from 'react';
+import { API_HOST, notificationSwal } from 'common/common';
+import React, { useState, useEffect } from 'react';
 
 const MainProducts = ({ categorias = [], productos, totalDinnerCaja, onHandleSubmit, onChangeFilters }) => {
   const [preVenta, setPreVenta] = useState([]);
   const [subTotal, setSubTotal] = useState((0).toFixed(2));
   const [total, setTotal] = useState((0).toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  function addProductToPreVenta(id) {
-    const item = preVenta.filter((p) => p.id == id);
-    if (item.length > 0) {
-      addQuantityToProduct(item[0].id);
-    } else {
-      const producto = productos.filter((p) => p.id == id)[0];
-      const newPreVenta = { ...producto, quantity: 1, total: producto.price };
-      setPreVenta([...preVenta, newPreVenta]);
-      sumar([...preVenta, newPreVenta]);
-    }
-  }
-  function addQuantityToProduct(id) {
-    const newPreVenta = preVenta.map((producto) => {
-      if (producto.id === id && producto.quantity < producto.amount) {
-        const newQuantity = producto.quantity + 1;
-        return { ...producto, quantity: newQuantity, total: newQuantity * producto.price };
+  const [openModal, setOpenModal] = useState(false);
+  const [totalInCart, setTotalInCart] = useState(0);
+
+  useEffect(() => {
+    sumar(preVenta);
+  }, [preVenta]);
+
+  const addProductToPreVenta = (id) => {
+    setPreVenta((prevPreVenta) => {
+      const item = prevPreVenta.find((p) => p.id === id);
+      if (item) {
+        return prevPreVenta.map((producto) =>
+          producto.id === id && producto.quantity < producto.amount
+            ? { ...producto, quantity: producto.quantity + 1, total: (producto.quantity + 1) * producto.price }
+            : producto
+        );
       } else {
-        return { ...producto };
+        const producto = productos.find((p) => p.id === id);
+        return [...prevPreVenta, { ...producto, quantity: 1, total: producto.price }];
       }
     });
-    setPreVenta(newPreVenta);
-    sumar(newPreVenta);
-  }
-  function removeQuantityToProduct(id) {
-    const newPreVenta = preVenta.map((producto) => {
-      if (producto.id === id && producto.quantity > 1) {
-        const newQuantity = producto.quantity - 1;
-        return { ...producto, quantity: newQuantity, total: newQuantity * producto.price };
-      } else {
-        return { ...producto };
-      }
-    });
-    setPreVenta(newPreVenta);
-    sumar(newPreVenta);
-  }
-  function removeProductFromPreVenta(id) {
-    const newPreVenta = preVenta.filter((p) => p.id !== id);
-    setPreVenta(newPreVenta);
-    sumar(newPreVenta);
-  }
-  function sumar(newPreVenta) {
-    if (newPreVenta.length > 0) {
-      let suma = 0;
-      newPreVenta.forEach((element) => {
-        suma += element.total;
-      });
-      setSubTotal((suma / 1.18).toFixed(2));
-      setTotal(suma.toFixed(2));
-    } else {
-      setSubTotal((0).toFixed(2));
-      setTotal((0).toFixed(2));
-    }
-  }
+  };
+
+  const removeQuantityToProduct = (id) => {
+    setPreVenta((prevPreVenta) =>
+      prevPreVenta.map((producto) =>
+        producto.id === id && producto.quantity > 1
+          ? { ...producto, quantity: producto.quantity - 1, total: (producto.quantity - 1) * producto.price }
+          : producto
+      )
+    );
+  };
+
+  const addQuantityToProduct = (id) => {
+    setPreVenta((prevPreVenta) =>
+      prevPreVenta.map((producto) =>
+        producto.id === id && producto.quantity < producto.amount
+          ? { ...producto, quantity: producto.quantity + 1, total: (producto.quantity + 1) * producto.price }
+          : producto
+      )
+    );
+  };
+
+  const removeProductFromPreVenta = (id) => {
+    setPreVenta((prevPreVenta) => prevPreVenta.filter((p) => p.id !== id));
+  };
+
+  const sumar = (newPreVenta) => {
+    const suma = newPreVenta.reduce((acc, element) => acc + element.total, 0);
+    const sumaCart = newPreVenta.reduce((acc, element) => acc + element.quantity, 0);
+    setSubTotal((suma / 1.18).toFixed(2));
+    setTotal(suma.toFixed(2));
+    setTotalInCart(sumaCart);
+  };
 
   const handleSubmit = async () => {
     if (!ValidacionItem(preVenta)) {
       return;
     }
 
-    if (isSubmitting) return; // Retornar si ya se está enviando el formulario
-    setIsSubmitting(true); // Establecer isSubmitting a true
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       const response = await onHandleSubmit(preVenta, total);
@@ -93,55 +98,63 @@ const MainProducts = ({ categorias = [], productos, totalDinnerCaja, onHandleSub
         setPreVenta([]);
         setSubTotal((0).toFixed(2));
         setTotal((0).toFixed(2));
+        setOpenModal(false);
       } else {
         notificationSwal('error', response?.message);
       }
     } catch (error) {
       notificationSwal('error', 'Ocurrió un error al enviar la solicitud');
     } finally {
-      setIsSubmitting(false); // Establecer isSubmitting a false
+      setIsSubmitting(false);
     }
   };
 
   const ValidacionItem = (itemSave) => {
-    let response = true;
-    if (!itemSave || Object.keys(itemSave).length === 0) {
+    if (!itemSave || itemSave.length === 0) {
       notificationSwal('error', 'No se puede enviar campos vacios');
-      response = false;
-      return response;
+      return false;
     }
-    return response;
+    return true;
   };
 
   return (
     <div>
-      <div className="row">
-        <div className="col-9 d-flex align-items-end">
-          <Button variant="contained" color="secondary" className="m-1" onClick={() => onChangeFilters(0)}>
-            <FilterListOff />
-          </Button>
-          {categorias.length > 0 &&
-            categorias.map((categoria, index) => {
-              return (
-                <Button key={index} variant="contained" color="secondary" className="m-1" onClick={() => onChangeFilters(categoria?.id)}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} md={6} order={{ xs: 2, md: 1 }}>
+          <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start' }}>
+            <Button variant="contained" color="secondary" onClick={() => onChangeFilters(0)}>
+              <FilterListOff />
+            </Button>
+            {categorias.length > 0 &&
+              categorias.map((categoria, index) => (
+                <Button key={index} variant="contained" color="secondary" onClick={() => onChangeFilters(categoria?.id)}>
                   <FilterList />
                   {categoria.name}
                 </Button>
-              );
-            })}
-        </div>
-        <div className="col-3 px-4">
-          <Stack direction="row" justifyContent="end" alignItems="center" className="py-1">
-            <Alert icon={false} severity="success" variant="filled">
-              <AlertTitle className="m-0">
-                <Typography variant="h2">
-                  {'S/. ' + Number(totalDinnerCaja.toFixed(2)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </Typography>
-              </AlertTitle>
-            </Alert>
+              ))}
           </Stack>
-        </div>
-      </div>
+        </Grid>
+        <Grid item xs={12} md={6} order={{ xs: 1, md: 2 }} textAlign={{ xs: 'right' }}>
+          <Stack direction="row" spacing={2} justifyContent={{ xs: 'flex-end' }}>
+            <Button variant="contained" color="success">
+              {`S/. ${Number(totalDinnerCaja.toFixed(2)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            </Button>
+            <IconButton
+              style={{
+                backgroundColor: 'yellow',
+                borderRadius: '50%',
+                padding: '10px'
+              }}
+              color="secondary"
+              onClick={() => setOpenModal(true)}
+            >
+              <Badge badgeContent={totalInCart} color="error">
+                <ShoppingCart />
+              </Badge>
+            </IconButton>
+          </Stack>
+        </Grid>
+      </Grid>
       <div className="d-flex">
         <div className="flex-grow-1">
           {productos.map((producto, index) => (
@@ -152,7 +165,7 @@ const MainProducts = ({ categorias = [], productos, totalDinnerCaja, onHandleSub
               color="error"
               className="m-1"
               sx={{ width: '100px', height: '120px', overflow: 'hidden' }}
-              disabled={producto.amount == 0}
+              disabled={producto.amount === 0}
             >
               <Stack direction="column" justifyContent="space-between" className="h-100 w-100">
                 <Stack direction="row" justifyContent="space-between">
@@ -160,7 +173,7 @@ const MainProducts = ({ categorias = [], productos, totalDinnerCaja, onHandleSub
                   <Typography noWrap>{producto?.amount || 0}</Typography>
                 </Stack>
                 <Stack direction="column" alignItems="center">
-                  <img src={producto?.image} alt="" style={{ objectFit: 'cover', height: '50px' }} />
+                  <img src={API_HOST + producto?.image} alt="" style={{ objectFit: 'cover', height: '50px' }} />
                 </Stack>
                 <Stack direction="column" alignItems="center" sx={{ fontSize: '10px' }}>
                   {producto?.name}
@@ -169,80 +182,86 @@ const MainProducts = ({ categorias = [], productos, totalDinnerCaja, onHandleSub
             </Button>
           ))}
         </div>
-        <Paper elevation={12} className="mx-2 p-3 d-flex flex-column justify-content-between" sx={{ minWidth: '350px', height: '500px' }}>
+      </div>
+      <Dialog open={openModal} onClose={() => setOpenModal(false)}>
+        <DialogTitle className="text-center h4">Carrito de Compras</DialogTitle>
+        <DialogContent>
           <TableContainer component={Paper}>
-            <Typography className="h4 text-center">Detalles de Pre-Venta</Typography>
-            <Table sx={{ maxHeight: 650 }} size="small" aria-label="a dense table">
+            <Table sx={{ minWidth: 300 }} aria-label="a dense table">
               <TableBody>
-                {preVenta.map((p, index) => (
-                  <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell align="center" className="px-0">
-                      <img src={p.image} alt="" height="20px" style={{ objectFit: 'cover' }} />
-                    </TableCell>
-                    <TableCell align="left" className="px-0">
-                      <Typography sx={{ width: '100px' }} noWrap>
-                        {p.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right" className="px-0">
-                      <Typography>s/.{p.price}</Typography>
-                    </TableCell>
-                    <TableCell align="center" className="px-0">
-                      <IconButton size="small" color="secondary" onClick={() => removeQuantityToProduct(p.id)}>
-                        <RemoveCircle fontSize="inherit" />
-                      </IconButton>
-                    </TableCell>
-                    <TableCell align="right" className="px-0">
-                      <Typography>{p.quantity}</Typography>
-                    </TableCell>
-                    <TableCell align="center" className="px-0">
-                      <IconButton size="small" color="secondary" onClick={() => addQuantityToProduct(p.id)}>
-                        <AddCircle fontSize="inherit" />
-                      </IconButton>
-                    </TableCell>
-                    <TableCell align="right" className="px-0">
-                      <Typography>s/.{p.total}</Typography>
-                    </TableCell>
-                    <TableCell align="center" className="px-0">
-                      <IconButton size="small" color="error" onClick={() => removeProductFromPreVenta(p.id)}>
-                        <Close fontSize="inherit" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {preVenta.length > 0 ? (
+                  preVenta.map((p, index) => (
+                    <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                      <TableCell align="center" className="px-0">
+                        <img src={p.image} alt="" height="20px" style={{ objectFit: 'cover' }} />
+                      </TableCell>
+                      <TableCell align="left" className="px-0">
+                        <Typography sx={{ width: '100px' }} noWrap>
+                          {p.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right" className="px-0">
+                        <Typography>s/.{p.price}</Typography>
+                      </TableCell>
+                      <TableCell align="center" className="px-0">
+                        <IconButton size="small" color="secondary" onClick={() => removeQuantityToProduct(p.id)}>
+                          <RemoveCircle fontSize="inherit" />
+                        </IconButton>
+                      </TableCell>
+                      <TableCell align="right" className="px-0">
+                        <Typography>{p.quantity}</Typography>
+                      </TableCell>
+                      <TableCell align="center" className="px-0">
+                        <IconButton size="small" color="secondary" onClick={() => addQuantityToProduct(p.id)}>
+                          <AddCircle fontSize="inherit" />
+                        </IconButton>
+                      </TableCell>
+                      <TableCell align="right" className="px-0">
+                        <Typography>s/.{p.total}</Typography>
+                      </TableCell>
+                      <TableCell align="center" className="px-0">
+                        <IconButton size="small" color="error" onClick={() => removeProductFromPreVenta(p.id)}>
+                          <Close fontSize="inherit" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <Alert severity="info">No hay productos agregados aún</Alert>
+                )}
               </TableBody>
             </Table>
           </TableContainer>
-          <div>
-            <Box className="py-3">
-              <Stack direction="row" justifyContent="space-between">
-                <Typography>SUBTOTAL</Typography>
-                <Typography>s/. {subTotal}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography>IGV</Typography>
-                <Typography>s/. {(total - subTotal).toFixed(2)}</Typography>
-              </Stack>
-              <Divider className="my-2" variant="fullWidth" />
-              <Stack direction="row" justifyContent="space-between">
-                <Typography>TOTAL</Typography>
-                <Typography>s/. {total}</Typography>
-              </Stack>
-            </Box>
-            <LoadingButton
-              loading={isSubmitting}
-              fullWidth
-              variant="contained"
-              color="secondary"
-              onClick={() => handleSubmit()}
-              loadingPosition="start"
-              startIcon={<Send />}
-            >
-              {isSubmitting ? 'Enviando...' : 'Registrar'}
-            </LoadingButton>
-          </div>
-        </Paper>
-      </div>
+          <Box className="py-3">
+            <Stack direction="row" justifyContent="space-between">
+              <Typography>SUBTOTAL</Typography>
+              <Typography>s/. {subTotal}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography>IGV</Typography>
+              <Typography>s/. {(total - subTotal).toFixed(2)}</Typography>
+            </Stack>
+            <Divider className="my-2" variant="fullWidth" />
+            <Stack direction="row" justifyContent="space-between">
+              <Typography>TOTAL</Typography>
+              <Typography>s/. {total}</Typography>
+            </Stack>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <LoadingButton
+            loading={isSubmitting}
+            fullWidth
+            variant="contained"
+            color="secondary"
+            onClick={() => handleSubmit()}
+            loadingPosition="start"
+            startIcon={<Send />}
+          >
+            {isSubmitting ? 'Vendiendo...' : 'Vender'}
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

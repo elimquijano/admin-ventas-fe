@@ -2,7 +2,7 @@ import Swal from 'sweetalert2';
 
 export const URL = process.env.REACT_APP_URL;
 export const API_HOST = process.env.REACT_APP_URL_API;
-export const OFFLINE_URL = `http://localhost:3000/`;
+export const OFFLINE_URL = process.env.REACT_APP_URL_API;
 
 export const API_URL = API_HOST + 'api/';
 export const API_URL_ROL = API_URL + 'rol';

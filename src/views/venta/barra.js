@@ -1,14 +1,16 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { columnsTicket } from 'common/ExportColums';
 import { exportToExcel } from 'common/MaterialExportToExel';
 import {
   getSession,
   notificationSwal,
-  deleteSession,
   FechaActualCompleta,
   createSession,
-  numeroALetras,
-  getOfflinePathImage
+  API_URL_USER,
+  API_URL_CAJA,
+  fetchAPIAsync,
+  descargarDocumento,
+  API_URL_VENTA
 } from 'common/common';
 import TableResumeModal from 'ui-component/table/TableResumeModal';
 import { useEffect } from 'react';
@@ -22,39 +24,24 @@ import TableExpandData from 'ui-component/table/TableExpandData';
 import HeaderInterfaceUser from 'ui-component/subheader/headerInterfaceUser';
 import MainProducts from 'ui-component/main/mainProducts';
 import FullScreenLoader from 'ui-component/loader/FullScreenLoader';
+import axios from 'axios';
 
 const Productos = () => {
+  const websocketRef = React.useRef(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isShowLoader, setIsShowLoader] = useState(false);
   const [messageLoader, setMessageLoader] = useState('Sincronizando, espere un momento...');
-  const [isView, setIsView] = useState(false);
-  const offline = getSession('OFFLINE');
-  if (offline == null) {
-    redirectToRelativePage('/#/');
-    window.location.reload();
-  }
-  const metadata = offline.find((u) => u.id == getSession('USER_ID'));
-  const websocketRef = useRef(null); // Usar useRef para mantener la referencia del WebSocket
-
+  const [metadata, setMetadata] = useState({});
   const [cliente, setCliente] = useState({});
-  const [clientes, setClientes] = useState(metadata.negocio.clientes || []);
-  const [user, setUser] = useState(metadata || {});
-  const [caja, setCaja] = useState(metadata?.caja || null);
-  const [documentos] = useState(metadata?.documentos || []);
-  const [impresoras] = useState(metadata?.impresoras || []);
-  const [formVenta, setFormVenta] = useState(
-    {
-      negocio_id: metadata?.negocio_id,
-      user_id: metadata?.id,
-      documento_id: metadata?.documento_id,
-      impresora_id: metadata?.impresora_id,
-      caja_id: metadata?.caja?.id || 0,
-      cliente_id: null
-    } || {}
-  );
-  const [productos, setProductos] = useState(metadata?.productos || []);
-  const [categorias] = useState(metadata?.negocio?.categorias || []);
-  const [ventas, setVentas] = useState(getSession('VENTAS') || []);
+  const [clientes, setClientes] = useState([]);
+  const [user, setUser] = useState({});
+  const [caja, setCaja] = useState(null);
+  const [documentos, setDocumentos] = useState([]);
+  const [impresoras, setImpresoras] = useState([]);
+  const [formVenta, setFormVenta] = useState({});
+  const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [ventas, setVentas] = useState([]);
   const [detVentasResume, setDetVentasResume] = useState([]);
   const [totalDinnerCaja, setTotalDinnerCaja] = useState(0);
   const [categoriaSelected, setCategoriaSelected] = useState(0);
@@ -78,6 +65,67 @@ const Productos = () => {
   const [isOpenModalVentas, setIsOpenModalVentas] = useState(false);
   const [isOpenModalResumen, setIsOpenModalResumen] = useState(false);
   const [isOpenModalConfig, setIsOpenModalConfig] = useState(false);
+
+  useEffect(() => {
+    handleLeftDrawerToggle();
+    const fetchInitData = async () => {
+      const url = API_URL_USER + `barra/${getSession('USER_ID')}`;
+      await fetch(url, { method: 'GET' })
+        .then((response) => response.json())
+        .then((data) => {
+          setMetadata(data);
+          setClientes(data?.negocio?.clientes);
+          setUser(data);
+          setCaja(data?.caja);
+          setDocumentos(data?.documentos);
+          setImpresoras(data?.impresoras);
+          setFormVenta({
+            negocio_id: data?.negocio_id,
+            user_id: data?.id,
+            documento_id: data?.documento_id,
+            impresora_id: data?.impresora_id,
+            //caja_id: data?.caja?.id || 0,
+            cliente_id: null
+          });
+          setProductos(data?.productos);
+          transformData(data?.productos);
+          setCategorias(data?.negocio?.categorias);
+        })
+        .catch((error) => {
+          console.error('Error al obtener informacion de la barra: ', error);
+          notificationSwal('error', 'Error al obtener informacion de la barra');
+          //window.location.reload();
+          return;
+        });
+    };
+    fetchInitData();
+  }, []);
+
+  useEffect(() => {
+    if (!caja) {
+      setFormVenta({ ...formVenta, caja_id: 0 });
+      setVentas([]);
+    } else {
+      setFormVenta({ ...formVenta, caja_id: caja?.id });
+      const fetchVentas = async () => {
+        const url = API_URL_CAJA + `metadata/${caja?.id}`;
+        try {
+          const response = await fetch(url, { method: 'GET' });
+          const data = await response.json();
+          setVentas(data?.ventas);
+        } catch (error) {
+          console.error('Error al obtener ventas: ', error);
+        }
+      };
+      fetchVentas();
+    }
+  }, [caja]);
+
+  useEffect(() => {
+    console.log(ventas);
+    transformData();
+  }, [ventas]);
+
   const onChangeFilters = async (id) => {
     setCategoriaSelected(id);
   };
@@ -291,10 +339,7 @@ const Productos = () => {
     }
   ];
   const obtenerStock = (producto) => {
-    const producto_id = producto.id;
-    const currentMetadata = getSession('OFFLINE').find((f) => f.id == metadata?.id);
-    const esteProducto = currentMetadata.productos.find((producto) => producto.id === producto_id);
-    const stocks = esteProducto.stock;
+    const stocks = producto.stock;
     if (stocks.length > 0) {
       const tienenStock = stocks.filter((stock) => stock.amount > 0);
       if (tienenStock.length > 0) {
@@ -303,7 +348,7 @@ const Productos = () => {
     }
     return { id: 0, price: 0, amount: 0 };
   };
-  const actualizarStock = (detalles) => {
+  /* const actualizarStock = (detalles) => {
     const currentMetadata = getSession('OFFLINE').find((f) => f.id == metadata?.id);
     // Create deep copy of productos to avoid mutation
     const newProductos = productos.map((producto) => {
@@ -341,114 +386,69 @@ const Productos = () => {
         }))
       );
     createSession('STOCK', stocks);
-  };
-  const transformData = async (currentVentas) => {
-    if (currentVentas) {
-      const updateQuantity = productos.map((producto) => {
-        const { id, price, amount } = obtenerStock(producto);
-        let numVentas = 0;
-        currentVentas.forEach((venta) => {
-          venta?.detalles_venta.forEach((detalle) => {
-            if (detalle?.id === producto?.id) {
-              // Agregar el numero de ventas al producto
-              numVentas += detalle?.quantity;
-            }
-          });
+  }; */
+  const transformData = async (prod = productos) => {
+    const updateQuantity = prod.map((producto) => {
+      const { id, price, amount } = obtenerStock(producto);
+      let numVentas = 0;
+      ventas.forEach((venta) => {
+        venta?.detalles.forEach((detalle) => {
+          if (detalle?.id === producto?.id) {
+            // Agregar el numero de ventas al producto
+            numVentas += detalle?.quantity;
+          }
         });
-        return {
-          ...producto,
-          image: getOfflinePathImage(producto.image),
-          quantity: String(numVentas),
-          stock_id: id,
-          amount: amount,
-          amount_end: String(amount),
-          amount_start: String(amount + numVentas),
-          price: price,
-          total: numVentas * price,
-          ventas: numVentas
-        };
       });
-      setTotalDinnerCaja(sumar(updateQuantity));
-      setDetVentasResume(updateQuantity.filter((producto) => producto.ventas !== 0));
-      setProductos(updateQuantity);
-    }
+      return {
+        ...producto,
+        quantity: String(numVentas),
+        stock_id: id,
+        amount: amount,
+        amount_end: String(amount),
+        amount_start: String(amount + numVentas),
+        price: price,
+        total: numVentas * price,
+        ventas: numVentas
+      };
+    });
+    setTotalDinnerCaja(sumar(updateQuantity));
+    setDetVentasResume(updateQuantity.filter((producto) => producto.ventas !== 0));
+    setProductos(updateQuantity);
   };
   const toggleCaja = async () => {
     if (caja === null) {
       // OPEN
-      if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-        setMessageLoader('Aperturando caja, espere un momento...');
-        setIsShowLoader(true);
-        const openCajaCommand = {
-          type: 'open_caja',
-          caja: {
-            numeros_sms: metadata?.negocio?.numeros_sms,
-            sede: metadata?.negocio?.sede,
-            dni: metadata?.dni,
-            user_id: metadata?.id,
-            id: metadata?.id + generarCodigoTemporal() + String(Math.floor(Math.random() * 1000)),
-            opening_datetime: FechaActualCompleta()
+      setMessageLoader('Aperturando caja, espere un momento...');
+      setIsShowLoader(true);
+      try {
+        const response = await fetchAPIAsync(
+          API_URL_CAJA,
+          {
+            user_id: user?.id
           },
-          connection: isOnline
-        };
-        websocketRef.current.send(JSON.stringify(openCajaCommand));
-      } else {
-        notificationSwal('error', 'WebSocket no está abierto');
-        window.location.reload();
+          'POST'
+        );
+        setCaja(response);
+        notificationSwal('success', '¡Usted aperturó su caja de forma exitosa!');
+      } catch (error) {
+        notificationSwal('error', 'No se pudo abrir caja.');
+        console.log(error);
+      } finally {
+        setIsShowLoader(false);
       }
     } else {
       //CLOSE BOX
-      if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-        const impresora = impresoras.find((impresora) => impresora.id == formVenta.impresora_id);
-        if (
-          isOnline &&
-          (getSession('OFFLINE_OPEN_CAJAS') || getSession('OFFLINE_CLOSE_CAJAS') || getSession('OFFLINE_VENTAS') || getSession('STOCK'))
-        ) {
-          setMessageLoader('Sincronizando, espere un momento...');
-          setIsShowLoader(true);
-          // Enviar un comando para sincronizar los datos con la base de datos
-          const sincronizationToDBCommand = {
-            type: 'sincronization_to_db',
-            offline_cajas_open: getSession('OFFLINE_OPEN_CAJAS') || null,
-            offline_cajas_close: getSession('OFFLINE_CLOSE_CAJAS') || null,
-            offline_clientes: getSession('OFFLINE_CLIENTES') || null,
-            update_documentos: getSession('LATEST_NUMBER') || null,
-            update_stocks: getSession('STOCK') || null,
-            offline_ventas: getSession('OFFLINE_VENTAS') || null
-          };
-          websocketRef.current.send(JSON.stringify(sincronizationToDBCommand));
-        }
-
-        setMessageLoader('Cerrando caja, espere un momento...');
-        setIsShowLoader(true);
-        const closeCajaCommand = {
-          type: 'close_caja',
-          caja: {
-            numeros_sms: metadata?.negocio?.numeros_sms,
-            token_reporte: metadata?.negocio?.token_reporte,
-            sede: metadata?.negocio?.sede,
-            dni: metadata?.dni,
-            id: metadata?.caja?.id,
-            closing_datetime: FechaActualCompleta(),
-            info: {
-              logo: splitName(metadata?.negocio?.logo),
-              name: metadata?.negocio?.name,
-              ruc: metadata?.negocio?.ruc,
-              address: metadata?.negocio?.address,
-              sede: metadata?.negocio?.sede,
-              empleado: metadata?.name,
-              apertura: metadata?.caja?.opening_datetime,
-              cierre: FechaActualCompleta()
-            },
-            items: detVentasResume,
-            nombre_impresora: impresora?.name
-          },
-          connection: isOnline
-        };
-        websocketRef.current.send(JSON.stringify(closeCajaCommand));
-      } else {
-        notificationSwal('error', 'WebSocket no está abierto');
-        window.location.reload();
+      setMessageLoader('Cerrando caja, espere un momento...');
+      setIsShowLoader(true);
+      try {
+        const url = API_URL_CAJA + `cierre/${caja.id}`;
+        descargarDocumento(url, 'Reporte_de_ventas');
+        notificationSwal('success', '¡Usted cerró su caja de forma exitosa!');
+        setCaja(null);
+      } catch (error) {
+        notificationSwal('error', 'No se pudo cerrar caja.' + error);
+      } finally {
+        setIsShowLoader(false);
       }
     }
   };
@@ -473,21 +473,6 @@ const Productos = () => {
     }
   };
   const handleSubmit = async (preVenta, total) => {
-    if (((ventas.length > 0 && ventas.length % 10 === 0) || getSession('OFFLINE_VENTAS')?.length >= 50) && isOnline) {
-      setMessageLoader('Sincronizando, espere un momento...');
-      setIsShowLoader(true);
-      // Enviar un comando para sincronizar los datos con la base de datos
-      const sincronizationToDBCommand = {
-        type: 'sincronization_to_db',
-        offline_cajas_open: getSession('OFFLINE_OPEN_CAJAS') || null,
-        offline_cajas_close: getSession('OFFLINE_CLOSE_CAJAS') || null,
-        offline_clientes: getSession('OFFLINE_CLIENTES') || null,
-        update_documentos: getSession('LATEST_NUMBER') || null,
-        offline_ventas: getSession('OFFLINE_VENTAS') || null
-      };
-      websocketRef.current.send(JSON.stringify(sincronizationToDBCommand));
-    }
-
     if (caja === null) {
       return { success: false, message: 'No se pudo realizar la venta. Aperture su caja primero.' };
     }
@@ -502,7 +487,6 @@ const Productos = () => {
       } else {
         data.cliente = cliente;
         data.cliente_id = `${cliente?.document_number}${metadata?.negocio_id}`;
-        data.total_letras = String(numeroALetras(Number(total))).toUpperCase();
         setCliente({});
       }
     } else if (total > 600) {
@@ -516,35 +500,18 @@ const Productos = () => {
       return { success: false, message: validate?.message };
     }
 
-    const impresora = impresoras.find((impresora) => impresora.id == data.impresora_id);
-    const currentDocument = getSession('LATEST_NUMBER').find((ln) => ln.documento_id == data.documento_id);
-
-    data.id = generarCodigoUnico();
-    data.detalles_venta = preVenta;
-    data.total = total;
-    data.serie = documento?.serie;
-    data.numero_folio = currentDocument?.numero;
-    data.folio = documento?.serie + '-' + String(currentDocument?.numero).padStart(6, '0');
-    data.logo = splitName(metadata?.negocio?.logo);
-    data.nombre_documento = documento?.name;
-    data.nombre_impresora = impresora?.name;
-    data.nombre_negocio = metadata.negocio.name;
-    data.ruc_negocio = metadata.negocio.ruc;
-    data.address_negocio = metadata.negocio.address;
-    data.created_at = FechaActualCompleta();
-
-    // Enviar la nueva venta al servidor
-    if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-      // Enviar un comando para obtener ventas
-      const addVentaCommand = {
-        type: 'add_venta',
-        itemsave: data,
-        connection: isOnline
-      };
-      websocketRef.current.send(JSON.stringify(addVentaCommand));
-      return { success: true };
-    } else {
-      return { success: false, message: 'WebSocket no está abierto' };
+    try {
+      data.detalles_venta = preVenta;
+      data.total = total;
+      const response = await axios.post(API_URL_VENTA + 'bloque', data);
+      console.log(response);
+      if (response?.success) {
+        return { success: true, message: 'Venta realizada con éxito' };
+      } else {
+        return { success: false, message: response?.message };
+      }
+    } catch (error) {
+      return { success: false, message: error };
     }
   };
   function ValidacionItemSave(itemSave) {
@@ -565,10 +532,6 @@ const Productos = () => {
       }
       if (!itemSave.documento_id || itemSave.documento_id == null) {
         msgResponse += '* No tiene asignado ningun documento(Boleta o Factura) por defecto.<br>';
-        response = false;
-      }
-      if (!itemSave.impresora_id || itemSave.impresora_id == null) {
-        msgResponse += '* No tiene asignado ninguna impresora por defecto.<br>';
         response = false;
       }
     }
@@ -624,7 +587,7 @@ const Productos = () => {
     };
   }, []);
   // CONEXION A WEBSOCKET
-  useEffect(() => {
+  /* useEffect(() => {
     websocketRef.current = new WebSocket('ws://localhost:8080/');
 
     websocketRef.current.onopen = () => {
@@ -752,48 +715,9 @@ const Productos = () => {
     return () => {
       websocketRef.current.close(); // Cerrar el WebSocket al desmontar el componente
     };
-  }, []);
+  }, []); */
   // DATA
-  useEffect(() => {
-    handleLeftDrawerToggle();
-    transformData(ventas);
-  }, []);
-  function generarCodigoTemporal() {
-    // Crear un objeto Date a partir de la cadena
-    const fechaHora = new Date(FechaActualCompleta());
 
-    // Formatear la fecha y hora en el formato deseado "AAMMDDHHMMSS"
-    const anio = String(fechaHora.getFullYear()).slice(-2);
-    const mes = String(fechaHora.getMonth() + 1).padStart(2, '0');
-    const dia = String(fechaHora.getDate()).padStart(2, '0');
-    const horas = String(fechaHora.getHours()).padStart(2, '0');
-    const minutos = String(fechaHora.getMinutes()).padStart(2, '0');
-    const segundos = String(fechaHora.getSeconds()).padStart(2, '0');
-
-    const codigoFechaHora = `${anio}${mes}${dia}${horas}${minutos}${segundos}`;
-    return codigoFechaHora;
-  }
-  function generarCodigoUnico() {
-    // Crear un objeto Date a partir de la cadena
-    const fechaHora = new Date(FechaActualCompleta());
-
-    // Formatear la fecha y hora en el formato deseado "AAMMDDHHMMSS"
-    const anio = String(fechaHora.getFullYear()).slice(-2);
-    const mes = String(fechaHora.getMonth() + 1).padStart(2, '0');
-    const dia = String(fechaHora.getDate()).padStart(2, '0');
-    const horas = String(fechaHora.getHours()).padStart(2, '0');
-    const minutos = String(fechaHora.getMinutes()).padStart(2, '0');
-    const segundos = String(fechaHora.getSeconds()).padStart(2, '0');
-
-    const codigoFechaHora = `${anio}${mes}${dia}${horas}${minutos}${segundos}`;
-
-    let codigoUnico;
-    do {
-      codigoUnico = metadata?.id + codigoFechaHora + String(Math.floor(Math.random() * 1000));
-    } while (ventas.find((v) => v.id === codigoUnico));
-
-    return codigoUnico;
-  }
   const splitName = (name) => {
     return name.split('/').pop();
   };
@@ -809,7 +733,7 @@ const Productos = () => {
     return suma;
   };
 
-  return isView ? (
+  return isOnline ? (
     <>
       <FullScreenLoader message={messageLoader} isShow={isShowLoader} />
       <HeaderInterfaceUser buttons={headerButtons} modals={headerModals} />
@@ -822,7 +746,7 @@ const Productos = () => {
       />
     </>
   ) : (
-    <div className="h2 text-center text-white">Desconectado del servidor WebSocket</div>
+    <div className="h2 text-center text-white">Sin conexión a internet</div>
   );
 };
 
